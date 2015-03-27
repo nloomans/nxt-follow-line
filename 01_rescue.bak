@@ -1,6 +1,5 @@
 #include "NXCDefs.h"
 #include "HTSMUX-driver.h"
-//#define sensor1
 
 int sen1 = false;
 int sen2 = false;
@@ -9,9 +8,8 @@ int sen4 = false;
 int sen5 = false;
 
 void init () {
+
   SetSensor(S4, SENSOR_LOWSPEED);
-
-
 
   // Tell the SMUX to start scanning its ports.
   // this takes 500ms
@@ -62,10 +60,10 @@ int sens (int num) {
       ret = Sensor(IN_1);
       break;
     case 4:
-      ret = smuxSensorLegoLightNorm(msensor_S4_3);
+      ret = smuxSensorLegoLightNorm(msensor_S4_4);
       break;
     case 5:
-      ret = smuxSensorLegoLightNorm(msensor_S4_4);
+      ret = smuxSensorLegoLightNorm(msensor_S4_3);
       break;
     default:
       TextOut(0, LCD_LINE1, "Error line 54: num can only be 1 to 5");
@@ -75,40 +73,42 @@ int sens (int num) {
 }
 
 void updateActive () {
-  if (sens(1) < 55) {
+  if (sens(1) < 35) {
     sen1 = true;
   }
   else {
     sen1 = false;
   }
 
-  if (sens(2) < 60) {
+  if (sens(2) < 50) {
     sen2 = true;
   }
   else {
     sen2 = false;
   }
-  if (sens(3) < 500) {
+  if (sens(3) < 700) {
     sen3 = true;
   }
   else {
     sen3 = false;
   }
 
-  if (sens(4) < 60) {
+  if (sens(4) < 50) {
     sen4 = true;
   }
   else {
     sen4 = false;
   }
 
-  if (sens(5) < 60) {
+  if (sens(5) < 35) {
     sen5 = true;
   }
   else {
     sen5 = false;
   }
 }
+
+
 
 
 void Move (int motorL, int motorR) {
@@ -133,86 +133,174 @@ void Move (int motorL, int motorR) {
   }
 }
 
-task main () {
-  init();
+void WaitForLine (string d) {
+  long OldTime = CurrentTick();
+  while (true) {
+    if (sens(3) < 600)  {
+      break;
+    }
+    else if (CurrentTick() > OldTime + 1000) {
+      switch (d) {
+        case "left":
+          Move(75,-75);
+          Wait(2000);
+          break;
+        case "right":
+          Move(-75,75);
+          Wait(2000);
+          break;
+      }
+      break;
+    }
+  }
+}
 
+
+void FolowLine () {
   while (true) {
     updateActive();
 
     if (sens(0) < 10) {
-      ClearScreen();
-      NumOut(1, 1, sens(0));
-      
       if (sens(-1) < 25) {
         // go right
+
         Move(-75,-75);
         Wait(200);
+
         Move(75,-75);
-        Wait(2500);
+        Wait(1200);
+
+        Move(75,75);
+        Wait(700);
+
+        Move(10,100);
+        Wait(2000);
+
+
+        until(sens(3) < 600);
+        Move(75,75);
+        Wait(200);
+        Move(65,-65);
+        until(sens(3) < 600);
       }
       else {
         // go left
-        //Move(-75,-75);
-        //Wait(200);
+
         Move(-75,-75);
         Wait(200);
-        
+
         Move(-75,75);
-        Wait(2200);
-        
+        Wait(1200);
+
         Move(75,75);
-        Wait(1700);
-        
-        Move(75,-75);
+        Wait(700);
+
+        Move(100,20);
         Wait(2000);
-        
+
+
+        until(sens(3) < 700);
         Move(75,75);
-        Wait(2000);
-        
-        Move(75,-75);
-        Wait(2300);
-        
-        Move(75,75);
-        Wait(1000);
-        
-        
-        
+        Wait(200);
+        Move(-65,65);
+        until(sens(3) < 700);
       }
     }
-    else if (sen2) {
-      Move(75,75);
-      Wait(200);
-      Move(-75,75);
-      until(sens(3) < 500);
-    }
-    else if (sen4) {
-      Move(75,75);
-      Wait(200);
-      Move(75,-75);
-      until(sens(3) < 500);
-    }
     else if (sen1) {
+      NumOut(1, LCD_LINE1, sens(1));
+      TextOut(1, LCD_LINE2, "sens 1");
       Move(75,75);
       Wait(200);
-      Move(-75,100);
-      until(sens(3) < 500);
+      Move(-100,75);
+      WaitForLine("right");
+      ClearScreen();
     }
     else if (sen5) {
+      NumOut(1, LCD_LINE1, sens(5));
+      TextOut(1, LCD_LINE2, "sens 5");
       Move(75,75);
       Wait(200);
-      Move(100,-75);
-      until(sens(3) < 500);
+      Move(75,-100);
+      WaitForLine("left");
+      ClearScreen();
+    }
+    else if (sen2) {
+      NumOut(1, LCD_LINE1, sens(2));
+      TextOut(1, LCD_LINE2, "sens 2");
+      Move(-75,75);
+      WaitForLine("left");
+      ClearScreen();
+    }
+    else if (sen4) {
+      NumOut(1, LCD_LINE1, sens(4));
+      TextOut(1, LCD_LINE2, "sens 4");
+      Move(75,-75);
+      WaitForLine("right");
+      ClearScreen();
+    }
+    else if (sens(3) > 800) {
+      Move(0,0);
+      break;
     }
     else {
       Move(75,75);
     }
-    
-
-    ClearScreen();
-    NumOut(1, 1, sens(-1));
-    
-    
   }
+}
 
+void FindBlock () {
+  // find block
+  Move(40,40);
+  Wait(1500);
+  while (true) {
+    until(sens(-1) < 255);
+    Move(0,0);
+    Wait(500);
+    if (sens(-1) < 255) {
+      break;
+    }
+    else {
+      Move(40,40);
+    }
+  }
+  // Block is found
+  Move(-40,-40);
+  Wait(1400);
+  Move(0,75);
+  Wait(3000);
+  until(sens(0) <= 100);
+  Move(0,-75);
+  Wait(200);
+  //Wait(200);
+  Move(75,75);
+  
 
+  until(sens(0) < 30);
+  Move(40,40);
+  Wait(1700);
+  Move(-60,60);
+  
+  
+  //until(sens(0) < 15);
+  
+  long OldTime = CurrentTick();
+  while (true) {
+    if (sens(0) < 27)  {
+      break;
+    }
+    else if (CurrentTick() > OldTime + 1600) {
+      Move(60,-60);
+      until(sens(0) < 27);
+      break;
+    }
+  }
+  
+  Move(0,0);
+  
+}
+
+task main () {
+  init();
+  FolowLine();
+  FindBlock();
 }
